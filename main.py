@@ -1,60 +1,63 @@
-import os
-import threading
-from flask import Flask
 import telebot
+from telebot import types
+import requests
 
-# ⚠️ የቦትህን ቶከን እዚህ አስገባ
+# 1. ያንተ ቶክን
 BOT_TOKEN = "8376770759:AAHo__-Ih_6CpkJtpUhXbuKQ3EhKH7JYNBs"
 bot = telebot.TeleBot(BOT_TOKEN)
 
-app = Flask(__name__)
+# ለተጠቃሚዎች ምርጫ መያዣ
+user_status = {}
 
-@app.route('/')
-def home():
-    return "Bot is running 24/7!"
+# 2. የሶሻል ሚዲያ መምረጫ ሜኑ
+def get_platform_menu():
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(
+        types.InlineKeyboardButton("🔹 Telegram", callback_data="check_telegram"),
+        types.InlineKeyboardButton("📸 Instagram", callback_data="check_instagram"),
+        types.InlineKeyboardButton("🎵 TikTok", callback_data="check_tiktok"),
+        types.InlineKeyboardButton("🐦 Twitter", callback_data="check_twitter")
+    )
+    return markup
 
-def run_flask():
-    # Koyeb ዌብ ሰርቨሩን በፖርት 8080 እንዲያነበው ያደርጋል
-    app.run(host="0.0.0.0", port=8080)
-
-# /start ሲባል የሚመጣ መልዕክት (የሰፋውና ፕሮፌሽናሉ አቀባበል)
+# 3. /start
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
-    welcome_text = (
-        "🚀 **እንኳን ወደ AK DEVELOP ፕሪሚየም የቴክኖሎጂ እና የሶፍትዌር ማበልጸጊያ ማዕከል በሰላም መጡ!** 🎯\n\n"
-        "እኛ የእርስዎን ታላላቅ የንግድ፣ የፈጠራ እና የዲጂታል ስራ ሃሳቦች በጥራት፣ በፍጥነት እና በዘመናዊ መልክ ወደ እውነተኛ ማራኪ ሶፍትዌሮች እና መሠረተ-ልማቶች እንቀይራለን።\n\n"
-        "🛠 **የምንሰጣቸው አገልግሎቶች (Our Services):**\n"
-        "• 🤖 ሙሉ ለሙሉ አውቶሜትድ የሆኑ የቴሌግራም ቦቶች (Telegram Bots)\n"
-        "• 🌐 ለንግድዎ የሚሆኑ ዘመናዊና ፈጣን ድረ-ገጾች (Websites)\n"
-        "• 🔒 ደህንነቱ የተጠበቀ፣ አስተማማኝ እና ዘመናዊ የቴክኖሎጂ መፍትሄዎች\n\n"
-        "እዚህ ዘመናዊ፣ አስተማማኝ እና ፈጣን አሠራርን ያገኛሉ! ለመጀመር ከታች ካሉት አማራጮች የሚፈልጉትን መርጠው ይግቡ፦ 👇"
+def start_msg(message):
+    bot.send_message(
+        message.chat.id,
+        "👋 እንኳን ወደ አካውንት ቼከር ቦት በደህና መጡ!\n\nምርጫዎን ይምረጡ:",
+        reply_markup=get_platform_menu()
     )
-    bot.reply_to(message, welcome_text, parse_mode="Markdown")
 
-# ተጠቃሚው ዩዘርኔም ሲልክ ያሳየኸኝን የTinder ዲዛይን አውጥቶ የሚመልስ ፋንክሽን
-@bot.message_handler(func=lambda message: True)
-def check_tinder_user(message):
-    username = message.text.replace('@', '').strip()
-    
-    # ልክ በመጀመሪያው ምስል ላይ እንዳለው አይነት ንፁህ አቀማመጥ
-    response_text = (
-        f"🔍 *[Tinder Checker Bot @AK_TITANEX3]*\n\n"
-        f"👤 *Basic info*\n"
-        f"•Username: @{username}\n"
-        f"•Status: ✅ Normal\n"
-        f"•Nickname: {username.capitalize()}dee\n"
-        f"•Registered: 2025-07-15 18:48:00 (340 days)\n\n"
-        f"👤 *Detailed info*\n"
-        f"Deep info unavailable, please contact admin to update credentials\n\n"
-        f"•Official link:\n"
-        f"https://tinder.com/@{username}"
+# 4. ምርጫ መቀበያ
+@bot.callback_query_handler(func=lambda call: call.data.startswith("check_"))
+def callback_handler(call):
+    platform = call.data.split("_")[1]
+    user_status[call.message.chat.id] = platform
+    bot.edit_message_text(
+        f"✅ {platform.upper()} ተመርጧል።\nእባክዎ ዩዘርኔሙን ይላኩ (ምሳሌ: @ak)",
+        chat_id=call.message.chat.id,
+        message_id=call.message.message_id
     )
-    bot.reply_to(message, response_text, parse_mode="Markdown", disable_web_page_preview=False)
 
-if __name__ == "__main__":
-    # የFlask ሰርቨሩን በሌላ በኩል ማስጀመር
-    threading.Thread(target=run_flask).start()
+# 5. ዩዘርኔም ቼክ ማድረጊያ
+@bot.message_handler(func=lambda m: m.chat.id in user_status and user_status[m.chat.id] is not None)
+def check_logic(message):
+    platform = user_status[message.chat.id]
+    username = message.text.replace("@", "").strip()
     
-    # ቦቱ ሳይቋረጥ እንዲሰራ ማድረግ
-    print("Bot is polling...")
-    bot.infinity_polling()
+    url = f"https://t.me/{username}" if platform == "telegram" else f"https://{platform}.com/{username}"
+    
+    try:
+        res = requests.get(url, timeout=5)
+        if res.status_code == 200:
+            msg = f"✅ አካውንቱ አለ! \n🔗 ሊንክ: {url}"
+        else:
+            msg = "❌ Query failed: አካውንቱ የለም።"
+    except:
+        msg = "⚠️ Network error."
+        
+    bot.send_message(message.chat.id, msg)
+    user_status[message.chat.id] = None # ማጽዳት
+
+bot.infinity_polling()
