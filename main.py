@@ -4,7 +4,7 @@ from flask import Flask
 import telebot
 
 # ⚠️ የቦትህን ቶከን እዚህ አስገባ
-BOT_TOKEN = "8376770759:AAGI6gGvzMTQSb05PQ3g66rkHtJMCJzpIj4"
+BOT_TOKEN = "8376770759:AAHo__-Ih_6CpkJtpUhXbuKQ3EhKH7JYNBs"
 bot = telebot.TeleBot(BOT_TOKEN)
 
 app = Flask(__name__)
